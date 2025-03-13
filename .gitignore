@@ -37,3 +37,4 @@ google-credentials.json
 # Server uploads
 server/uploads/*
 !server/uploads/.gitkeep
+.qodo

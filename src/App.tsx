@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, DragEvent } from 'react';
 import { Upload, Image as ImageIcon, Settings, RefreshCw, Download, Trash2, MessageSquare, Server } from 'lucide-react';
 import AvatarStyleSelector from './components/AvatarStyleSelector';
 import AvatarEditor from './components/AvatarEditor';
@@ -15,6 +15,7 @@ function App() {
   const [showChat, setShowChat] = useState(false);
   const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const serverCheckInterval = useRef<number>();
 
@@ -42,21 +43,22 @@ function App() {
     };
   }, []);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setErrorMessage('File size exceeds 5MB limit');
-        return;
-      }
-      
-      // Check file type
-      if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-        setErrorMessage('Only JPEG, JPG, and PNG files are allowed');
-        return;
-      }
-      
+  const validateFile = (file: File): boolean => {
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage('File size exceeds 5MB limit');
+      return false;
+    }
+    
+    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+      setErrorMessage('Only JPEG, JPG, and PNG files are allowed');
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleFile = (file: File) => {
+    if (validateFile(file)) {
       setErrorMessage(null);
       setUploadedFile(file);
       
@@ -69,8 +71,43 @@ function App() {
     }
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFile(file);
+    }
+  };
+
   const triggerFileInput = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      handleFile(files[0]);
+    }
   };
 
   const generateAvatar = async () => {
@@ -190,9 +227,14 @@ function App() {
             
             <div 
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                isDragging ? 'border-indigo-500 bg-indigo-50' :
                 uploadedImage ? 'border-green-400' : 'border-gray-300 hover:border-indigo-400'
               }`}
               onClick={triggerFileInput}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
             >
               <input 
                 type="file" 
